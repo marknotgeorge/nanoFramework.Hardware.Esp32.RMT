@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace nanoFramework.Hardware.Esp32.RMT.Tx
 {
@@ -30,6 +31,9 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 		/// </summary>
 		public bool level2 = false;
 
+		private UInt16 mDuration1 = 1;
+		private UInt16 mDuration2 = 0;
+
 		/// <summary>
 		/// Equals with sizeof(rmt_item32_t)
 		/// </summary>
@@ -39,9 +43,6 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 		/// Max value of rmt_item32_t::durationX (15 bit unsigned value)
 		/// </summary>
 		public const UInt16 MAX_DURATION = 32767;
-
-		private UInt16 mDuration1 = 1;
-		private UInt16 mDuration2 = 0;
 
 		#endregion Fields
 
@@ -129,6 +130,18 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 			return ApplyResult.DONE;
 		}
 
+		/// <summary>
+		/// Copy date from reference command
+		/// </summary>
+		/// <param name="reference">Reference command</param>
+		public void Assign(PulseCommand reference)
+		{
+			level1 = reference.level1;
+			level2 = reference.level2;
+			mDuration1 = reference.mDuration1;
+			mDuration2 = reference.mDuration2;
+		}
+
 		private ApplyResult AddLevel2(bool level, ref UInt16 duration)
 		{
 			if (level2 != level)
@@ -182,14 +195,11 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 		{
 			// <duration1><level1><duration2><level2>
 			// 0---------15------16---------30------31
-
-			UInt32 v = mDuration1 |
-				(level1 ? 1u : 0) << 15 |
-				(uint)mDuration2 << 16 |
-				(level2 ? 1u : 0) << 31;
-			byte[] intBytes = BitConverter.GetBytes(v);
-			Array.Copy(intBytes, 0, buf, offset, intBytes.Length);
+			SerialiseTo(buf, offset, mDuration1, mDuration2, level1, level2);
 		}
+
+		[MethodImpl(MethodImplOptions.InternalCall)]
+		private static extern void SerialiseTo(byte[] buf, int offset, UInt16 Duration1, UInt16 Duration2, bool level1, bool level2);
 
 		#endregion Methods
 	}

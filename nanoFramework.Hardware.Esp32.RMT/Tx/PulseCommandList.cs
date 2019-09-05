@@ -1,19 +1,51 @@
-﻿using System.Collections;
+﻿using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace nanoFramework.Hardware.Esp32.RMT.Tx
 {
 	public class PulseCommandList : IPulseCommandList
 	{
-		#region Fields
+		private ArrayList Commands = new ArrayList();
+
+		#region Constructors
+
+		public PulseCommandList() { }
 
 		/// <summary>
-		/// List of pulse commands
+		/// Create new Command list with size empty commands
 		/// </summary>
-		protected ArrayList commands = new ArrayList();
+		/// <param name="size">Predefined size (extandable)</param>
+		public PulseCommandList(int size)
+		{
+			Commands.Capacity = size;
+			for (int i = 0; i < size; ++i)
+			{
+				Commands.Add(new PulseCommand());
+			}
+		}
 
-		#endregion Fields
+		#endregion Constructors
+
+		#region Properties
+
+		private int CommandCount => Commands.Count;
+
+		#endregion Properties
 
 		#region Methods
+
+		public PulseCommand this[int i]
+		{
+			get
+			{
+				var res = Commands[i];
+				return (PulseCommand)res;
+			}
+
+			// up to -2.3ms fuster than
+			// set => ((PulseCommand)Commands[i]).Assign(value)
+			set => Commands[i] = value;
+		}
 
 		/// <summary>
 		/// Add full command to command list
@@ -22,7 +54,7 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 		/// <returns>self (to chaining calls)</returns>
 		public virtual IPulseCommandList AddCommand(PulseCommand cmd)
 		{
-			commands.Add(cmd);
+			Commands.Add(cmd);
 			return this;
 		}
 
@@ -58,11 +90,8 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 		/// <returns>bytearray, represents command list for native code</returns>
 		public virtual byte[] Serialise()
 		{
-			var result = new byte[commands.Count * PulseCommand.SerialisedSize];
-			for (int i = 0, offset = 0; i < commands.Count; ++i, offset += PulseCommand.SerialisedSize)
-			{
-				((PulseCommand)commands[i]).SerialiseTo(result, offset);
-			}
+			var result = new byte[CommandCount * PulseCommand.SerialisedSize];
+			NativeSerialiseTo(result);
 			return result;
 		}
 
@@ -80,13 +109,12 @@ namespace nanoFramework.Hardware.Esp32.RMT.Tx
 		/// <returns>Lat command of chain ir nill if chain is empty</returns>
 		protected PulseCommand LastCommand()
 		{
-			if (commands.Count == 0)
-			{
-				return null;
-			}
-
-			return (PulseCommand)commands[commands.Count - 1];
+			var r = Commands[Commands.Count - 1];
+			return (PulseCommand)r;
 		}
+
+		[MethodImpl(MethodImplOptions.InternalCall)]
+		private extern void NativeSerialiseTo(byte[] result);
 
 		#endregion Methods
 	}
